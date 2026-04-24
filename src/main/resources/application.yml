@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: order-processing-system
+
+  datasource:
+    url: jdbc:h2:mem:ordersdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080
+
+order:
+  scheduler:
+    interval-ms: 60000
+
+logging:
+  level:
+    com.order: INFO
+  file:
+    name: logs/order-processing.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 200MB
