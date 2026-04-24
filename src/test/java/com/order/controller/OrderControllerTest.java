@@ -3,7 +3,6 @@ package com.order.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.order.dto.*;
 import com.order.enums.OrderStatus;
-import com.order.exception.GlobalExceptionHandler;
 import com.order.exception.InvalidOrderStateException;
 import com.order.exception.OrderNotFoundException;
 import com.order.filter.CorrelationIdFilter;
@@ -16,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -278,6 +278,40 @@ class OrderControllerTest {
             mockMvc.perform(post("/api/v1/orders/1/cancel"))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message").value(containsString("PENDING")));
+        }
+    }
+
+    @Nested
+    @DisplayName("GlobalExceptionHandler")
+    class ExceptionHandlerTests {
+
+        @Test
+        @DisplayName("should return 409 for optimistic locking failure")
+        void shouldReturn409ForOptimisticLockingFailure() throws Exception {
+            when(orderService.updateOrderStatus(eq(1L), eq(OrderStatus.PROCESSING)))
+                    .thenThrow(new OptimisticLockingFailureException("Row was updated by another transaction"));
+
+            UpdateStatusRequest request = UpdateStatusRequest.builder()
+                    .status(OrderStatus.PROCESSING)
+                    .build();
+
+            mockMvc.perform(patch("/api/v1/orders/1/status")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message").value(containsString("retry")));
+        }
+
+        @Test
+        @DisplayName("should return 500 for unexpected exceptions")
+        void shouldReturn500ForUnexpectedException() throws Exception {
+            when(orderService.getOrderById(1L))
+                    .thenThrow(new RuntimeException("Unexpected DB failure"));
+
+            mockMvc.perform(get("/api/v1/orders/1"))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
+                    .andExpect(jsonPath("$.status").value(500));
         }
     }
 }

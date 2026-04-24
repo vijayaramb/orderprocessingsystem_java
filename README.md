@@ -35,7 +35,7 @@ A production-ready, enterprise-grade backend system built with Spring Boot for m
 | Validation | Jakarta Bean Validation |
 | Build | Maven |
 | Containerization | Docker (multi-stage) |
-| Testing | JUnit 5 + Mockito (57 tests) |
+| Testing | JUnit 5 + Mockito (59 tests) |
 
 ## Project Structure
 
@@ -107,7 +107,7 @@ mvn clean package
 mvn clean test
 ```
 
-All 57 tests across 14 test classes should pass.
+All 59 tests across 14 test classes should pass.
 
 ---
 
