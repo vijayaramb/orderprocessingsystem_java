@@ -6,6 +6,7 @@ import com.order.enums.OrderStatus;
 import com.order.exception.GlobalExceptionHandler;
 import com.order.exception.InvalidOrderStateException;
 import com.order.exception.OrderNotFoundException;
+import com.order.filter.CorrelationIdFilter;
 import com.order.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,7 +30,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(OrderController.class)
+@WebMvcTest(value = OrderController.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                classes = CorrelationIdFilter.class))
 class OrderControllerTest {
 
     @Autowired
@@ -58,12 +63,23 @@ class OrderControllerTest {
                 .build();
     }
 
+    private PagedResponse<OrderResponse> buildPagedResponse(List<OrderResponse> content) {
+        return PagedResponse.<OrderResponse>builder()
+                .content(content)
+                .page(0)
+                .size(20)
+                .totalElements(content.size())
+                .totalPages(1)
+                .last(true)
+                .build();
+    }
+
     @Nested
-    @DisplayName("POST /api/orders")
+    @DisplayName("POST /api/v1/orders")
     class CreateOrderEndpoint {
 
         @Test
-        @DisplayName("should create order and return 201")
+        @DisplayName("should create order and return 201 with ApiResponse wrapper")
         void shouldCreateOrderAndReturn201() throws Exception {
             CreateOrderRequest request = CreateOrderRequest.builder()
                     .items(List.of(
@@ -78,14 +94,14 @@ class OrderControllerTest {
             when(orderService.createOrder(any(CreateOrderRequest.class)))
                     .thenReturn(buildSampleResponse());
 
-            mockMvc.perform(post("/api/orders")
+            mockMvc.perform(post("/api/v1/orders")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").value(1))
-                    .andExpect(jsonPath("$.status").value("PENDING"))
-                    .andExpect(jsonPath("$.items", hasSize(1)))
-                    .andExpect(jsonPath("$.items[0].productName").value("Widget"));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.id").value(1))
+                    .andExpect(jsonPath("$.data.status").value("PENDING"))
+                    .andExpect(jsonPath("$.data.items", hasSize(1)));
         }
 
         @Test
@@ -95,7 +111,7 @@ class OrderControllerTest {
                     .items(List.of())
                     .build();
 
-            mockMvc.perform(post("/api/orders")
+            mockMvc.perform(post("/api/v1/orders")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -114,7 +130,7 @@ class OrderControllerTest {
                     ))
                     .build();
 
-            mockMvc.perform(post("/api/orders")
+            mockMvc.perform(post("/api/v1/orders")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest());
@@ -122,18 +138,19 @@ class OrderControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/orders/{id}")
+    @DisplayName("GET /api/v1/orders/{id}")
     class GetOrderEndpoint {
 
         @Test
-        @DisplayName("should return order by id")
+        @DisplayName("should return order by id wrapped in ApiResponse")
         void shouldReturnOrderById() throws Exception {
             when(orderService.getOrderById(1L)).thenReturn(buildSampleResponse());
 
-            mockMvc.perform(get("/api/orders/1"))
+            mockMvc.perform(get("/api/v1/orders/1"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(1))
-                    .andExpect(jsonPath("$.totalAmount").value(29.98));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.id").value(1))
+                    .andExpect(jsonPath("$.data.totalAmount").value(29.98));
         }
 
         @Test
@@ -141,14 +158,14 @@ class OrderControllerTest {
         void shouldReturn404WhenOrderNotFound() throws Exception {
             when(orderService.getOrderById(99L)).thenThrow(new OrderNotFoundException(99L));
 
-            mockMvc.perform(get("/api/orders/99"))
+            mockMvc.perform(get("/api/v1/orders/99"))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value(containsString("99")));
         }
     }
 
     @Nested
-    @DisplayName("PATCH /api/orders/{id}/status")
+    @DisplayName("PATCH /api/v1/orders/{id}/status")
     class UpdateStatusEndpoint {
 
         @Test
@@ -164,11 +181,12 @@ class OrderControllerTest {
             when(orderService.updateOrderStatus(eq(1L), eq(OrderStatus.PROCESSING)))
                     .thenReturn(response);
 
-            mockMvc.perform(patch("/api/orders/1/status")
+            mockMvc.perform(patch("/api/v1/orders/1/status")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.status").value("PROCESSING"));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.status").value("PROCESSING"));
         }
 
         @Test
@@ -181,7 +199,7 @@ class OrderControllerTest {
             when(orderService.updateOrderStatus(eq(1L), eq(OrderStatus.DELIVERED)))
                     .thenThrow(new InvalidOrderStateException("Cannot transition from PENDING to DELIVERED"));
 
-            mockMvc.perform(patch("/api/orders/1/status")
+            mockMvc.perform(patch("/api/v1/orders/1/status")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isConflict())
@@ -190,43 +208,51 @@ class OrderControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/orders")
+    @DisplayName("GET /api/v1/orders")
     class ListOrdersEndpoint {
 
         @Test
-        @DisplayName("should return all orders without filter")
-        void shouldReturnAllOrdersWithoutFilter() throws Exception {
-            when(orderService.getAllOrders(null)).thenReturn(List.of(buildSampleResponse()));
+        @DisplayName("should return paginated orders")
+        void shouldReturnPaginatedOrders() throws Exception {
+            PagedResponse<OrderResponse> pagedResponse = buildPagedResponse(List.of(buildSampleResponse()));
 
-            mockMvc.perform(get("/api/orders"))
+            when(orderService.getAllOrders(null, 0, 20)).thenReturn(pagedResponse);
+
+            mockMvc.perform(get("/api/v1/orders"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.content", hasSize(1)))
+                    .andExpect(jsonPath("$.data.totalElements").value(1))
+                    .andExpect(jsonPath("$.data.page").value(0));
         }
 
         @Test
-        @DisplayName("should filter orders by status")
+        @DisplayName("should filter orders by status with pagination")
         void shouldFilterOrdersByStatus() throws Exception {
-            when(orderService.getAllOrders(OrderStatus.PENDING)).thenReturn(List.of(buildSampleResponse()));
+            PagedResponse<OrderResponse> pagedResponse = buildPagedResponse(List.of(buildSampleResponse()));
 
-            mockMvc.perform(get("/api/orders").param("status", "PENDING"))
+            when(orderService.getAllOrders(OrderStatus.PENDING, 0, 20)).thenReturn(pagedResponse);
+
+            mockMvc.perform(get("/api/v1/orders").param("status", "PENDING"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].status").value("PENDING"));
+                    .andExpect(jsonPath("$.data.content[0].status").value("PENDING"));
         }
 
         @Test
-        @DisplayName("should return empty list when no orders")
-        void shouldReturnEmptyListWhenNoOrders() throws Exception {
-            when(orderService.getAllOrders(null)).thenReturn(List.of());
+        @DisplayName("should return empty page when no orders")
+        void shouldReturnEmptyPageWhenNoOrders() throws Exception {
+            PagedResponse<OrderResponse> emptyPage = buildPagedResponse(List.of());
 
-            mockMvc.perform(get("/api/orders"))
+            when(orderService.getAllOrders(null, 0, 20)).thenReturn(emptyPage);
+
+            mockMvc.perform(get("/api/v1/orders"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$.data.content", hasSize(0)));
         }
     }
 
     @Nested
-    @DisplayName("POST /api/orders/{id}/cancel")
+    @DisplayName("POST /api/v1/orders/{id}/cancel")
     class CancelOrderEndpoint {
 
         @Test
@@ -237,9 +263,10 @@ class OrderControllerTest {
 
             when(orderService.cancelOrder(1L)).thenReturn(response);
 
-            mockMvc.perform(post("/api/orders/1/cancel"))
+            mockMvc.perform(post("/api/v1/orders/1/cancel"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.status").value("CANCELLED"));
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.status").value("CANCELLED"));
         }
 
         @Test
@@ -248,7 +275,7 @@ class OrderControllerTest {
             when(orderService.cancelOrder(1L))
                     .thenThrow(new InvalidOrderStateException("Only orders in PENDING status can be cancelled"));
 
-            mockMvc.perform(post("/api/orders/1/cancel"))
+            mockMvc.perform(post("/api/v1/orders/1/cancel"))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message").value(containsString("PENDING")));
         }

@@ -2,9 +2,8 @@ package com.order.service;
 
 import com.order.dto.CreateOrderRequest;
 import com.order.dto.OrderResponse;
+import com.order.dto.PagedResponse;
 import com.order.enums.OrderStatus;
-
-import java.util.List;
 
 public interface OrderService {
 
@@ -14,7 +13,7 @@ public interface OrderService {
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus);
 
-    List<OrderResponse> getAllOrders(OrderStatus statusFilter);
+    PagedResponse<OrderResponse> getAllOrders(OrderStatus statusFilter, int page, int size);
 
     OrderResponse cancelOrder(Long orderId);
 
