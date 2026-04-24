@@ -131,7 +131,13 @@ The app starts at **http://localhost:8080** with H2 in-memory database. Data res
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-### Option 3: JAR with PostgreSQL (Production)
+### Option 3: Maven Spring Boot Plugin (Production)
+
+```bash
+mvn spring-boot:run "-Dspring-boot.run.profiles=prod" "-Dspring-boot.run.arguments=--DB_URL=jdbc:postgresql://localhost:5432/ordersdb --DB_USERNAME=orders_users --DB_PASSWORD=Order@123"
+```
+
+### Option 4: JAR with PostgreSQL (Production)
 
 ```bash
 # Build the JAR
@@ -147,7 +153,7 @@ java -jar target/order-processing-system-1.0.0.jar \
 
 Flyway will automatically create/migrate the database schema on startup.
 
-### Option 4: Docker Compose (Production — recommended)
+### Option 5: Docker Compose (Production — recommended)
 
 ```bash
 docker-compose up -d --build
@@ -163,7 +169,7 @@ To stop:
 docker-compose down
 ```
 
-### Option 5: Docker Image Only (bring your own DB)
+### Option 6: Docker Image Only (bring your own DB)
 
 ```bash
 # Build image
