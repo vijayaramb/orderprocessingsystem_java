@@ -141,8 +141,8 @@ mvn clean package -DskipTests
 java -jar target/order-processing-system-1.0.0.jar \
   --spring.profiles.active=prod \
   --DB_URL=jdbc:postgresql://localhost:5432/ordersdb \
-  --DB_USERNAME=orders_user \
-  --DB_PASSWORD=your_secure_password
+  --DB_USERNAME=orders_users \
+  --DB_PASSWORD=Order@123
 ```
 
 Flyway will automatically create/migrate the database schema on startup.

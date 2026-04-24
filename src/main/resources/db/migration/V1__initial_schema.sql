@@ -1,5 +1,5 @@
 CREATE TABLE orders (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     version BIGINT DEFAULT 0,
     status VARCHAR(20) NOT NULL,
     total_amount DECIMAL(19,2) NOT NULL,
@@ -11,7 +11,7 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_status_updated ON orders(status, updated_at);
 
 CREATE TABLE order_items (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     order_id BIGINT NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     quantity INT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE order_items (
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
 
 CREATE TABLE order_status_history (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     order_id BIGINT NOT NULL,
     from_status VARCHAR(20) NOT NULL,
     to_status VARCHAR(20) NOT NULL,
